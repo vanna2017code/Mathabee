@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mathabee Match</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+  <h2>Match</h2>
+  <div id="questions"></div>
+  <button onclick="submitAnswers()">Submit Answers</button>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+const matchId = prompt("Enter match ID:");
+socket.emit("join-match",{matchId});
+let questions = [];
+
+async function loadQuiz() {
+  const token = localStorage.getItem("token");
+  const res = await fetch("/quiz",{ headers:{ Authorization:"Bearer "+token } });
+  questions = await res.json();
+  const container = document.getElementById("questions");
+  container.innerHTML = questions.map((q,i)=>`<div>${i+1}. ${q.question}<br>${q.choices.map(c=>`<input type="radio" name="q${i}" value="${c}">${c}`).join(" ")}</div>`).join("");
+}
+loadQuiz();
+
+function submitAnswers() {
+  const answers = questions.map((q,i)=>{
+    const el = document.querySelector(`input[name=q${i}]:checked`);
+    return el ? el.value : null;
+  });
+  socket.emit("submit-answer",{matchId,userId:1,answer:answers});
+  alert("Answers submitted!");
+}
+
+socket.on("update", data => {
+  console.log("Match update", data);
+});
+</script>
+</body>
+</html>
