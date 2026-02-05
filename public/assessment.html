@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Mathabee Assessment Exam</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<h2>Mathabee Assessment Exam</h2>
+
+<select id="grade">
+  <option value="3">Grade 3</option>
+  <option value="4">Grade 4</option>
+  <option value="5">Grade 5</option>
+  <option value="6">Grade 6</option>
+  <option value="7">Grade 7</option>
+  <option value="8">Grade 8</option>
+  <option value="9">Grade 9</option>
+  <option value="10">Grade 10</option>
+  <option value="11">Grade 11</option>
+  <option value="12">Grade 12</option>
+</select>
+
+<button onclick="startExam()">Start Exam</button>
+
+<form id="exam"></form>
+<button onclick="submitExam()">Submit Exam</button>
+
+<script>
+let assessmentId;
+let questions = [];
+
+async function startExam() {
+  const grade = document.getElementById("grade").value;
+  const res = await fetch("/assessment/start", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + localStorage.token
+    },
+    body: JSON.stringify({ grade })
+  });
+
+  const data = await res.json();
+  assessmentId = data.assessmentId;
+  questions = data.questions;
+
+  const f = document.getElementById("exam");
+  f.innerHTML = "";
+
+  questions.forEach((q,i)=>{
+    f.innerHTML += `
+      <p>${i+1}. ${q.question}</p>
+      ${q.choices.map(c =>
+        `<label><input type="radio" name="q${i}" value="${c}">${c}</label>`
+      ).join("<br>")}
+    `;
+  });
+}
+
+async function submitExam() {
+  const answers = questions.map((q,i)=>({
+    question: q.question,
+    correctAnswer: q.answer,
+    studentAnswer:
+      document.querySelector(`input[name=q${i}]:checked`)?.value || ""
+  }));
+
+  const res = await fetch("/assessment/submit", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + localStorage.token
+    },
+    body: JSON.stringify({ assessmentId, answers })
+  });
+
+  const result = await res.json();
+  alert(`Score: ${result.score} / ${result.total}`);
+}
+</script>
+
+</body>
+</html>
