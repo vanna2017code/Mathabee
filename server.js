@@ -146,5 +146,63 @@ app.post("/assessment/submit", auth, (req, res) => {
   res.json({ score, total: answers.length });
 });
 
+app.post("/assessment/schedule", auth, (req, res) => {
+  const { title, grade, startTime, endTime, recurrence } = req.body;
+
+  db.run(
+    `INSERT INTO assessment_schedules
+     (title, grade, startTime, endTime, recurrence, createdBy)
+     VALUES (?,?,?,?,?,?)`,
+    [title, grade, startTime, endTime, recurrence, req.user.id],
+    function () {
+      res.json({ scheduleId: this.lastID });
+    }
+  );
+});
+
+app.get("/assessment/available", auth, (req, res) => {
+  const now = new Date().toISOString();
+
+  db.all(
+    `SELECT * FROM assessment_schedules
+     WHERE startTime <= ? AND endTime >= ?`,
+    [now, now],
+    async (_, rows) => {
+      res.json(rows);
+    }
+  );
+});
+
+app.post("/assessment/start-scheduled", auth, async (req, res) => {
+  const { scheduleId } = req.body;
+
+  db.get(
+    `SELECT * FROM assessment_schedules WHERE id=?`,
+    [scheduleId],
+    async (_, schedule) => {
+      if (!schedule) return res.sendStatus(404);
+
+      const now = new Date().toISOString();
+      if (now < schedule.startTime || now > schedule.endTime)
+        return res.status(403).json({ error: "Assessment not active" });
+
+      const questions = await generateAssessment(schedule.grade);
+
+      db.run(
+        `INSERT INTO assessments
+         (userId,grade,score,total,startedAt)
+         VALUES (?,?,?,?,?)`,
+        [req.user.id, schedule.grade, 0, 35, now],
+        function () {
+          res.json({
+            assessmentId: this.lastID,
+            title: schedule.title,
+            questions
+          });
+        }
+      );
+    }
+  );
+});
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Mathabee running on port ${PORT}`));
