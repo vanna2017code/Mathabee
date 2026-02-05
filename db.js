@@ -50,4 +50,22 @@ db.serialize(() => {
       createdAt TEXT
     )
   `);
+
+  db.run(`CREATE TABLE IF NOT EXISTS assessments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER,
+  grade INTEGER,
+  score INTEGER,
+  total INTEGER,
+  startedAt TEXT,
+  finishedAt TEXT
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS assessment_answers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  assessmentId INTEGER,
+  question TEXT,
+  correctAnswer TEXT,
+  studentAnswer TEXT
+)`);
 });
