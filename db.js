@@ -68,4 +68,14 @@ db.run(`CREATE TABLE IF NOT EXISTS assessment_answers (
   correctAnswer TEXT,
   studentAnswer TEXT
 )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS assessment_schedules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT,
+  grade INTEGER,
+  startTime TEXT,
+  endTime TEXT,
+  recurrence TEXT, -- once | weekly | monthly
+  createdBy INTEGER
+)`);
 });
