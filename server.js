@@ -7,6 +7,7 @@ import { auth } from "./auth.js";
 import { generateQuiz } from "./ai.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { generateAssessment } from "./ai.js";
 
 dotenv.config();
 
@@ -96,6 +97,53 @@ app.get("/leaderboard", auth, (req,res)=>{
       res.json(rows);
     }
   );
+});
+app.post("/assessment/start", auth, async (req, res) => {
+  const { grade } = req.body;
+  const questions = await generateAssessment(grade);
+
+  db.run(
+    `INSERT INTO assessments (userId,grade,score,total,startedAt)
+     VALUES (?,?,?,?,?)`,
+    [req.user.id, grade, 0, 35, new Date().toISOString()],
+    function () {
+      res.json({
+        assessmentId: this.lastID,
+        questions
+      });
+    }
+  );
+});
+
+app.post("/assessment/submit", auth, (req, res) => {
+  const { assessmentId, answers } = req.body;
+
+  let score = 0;
+
+  answers.forEach(a => {
+    if (a.studentAnswer === a.correctAnswer) score++;
+
+    db.run(
+      `INSERT INTO assessment_answers
+       (assessmentId,question,correctAnswer,studentAnswer)
+       VALUES (?,?,?,?)`,
+      [
+        assessmentId,
+        a.question,
+        a.correctAnswer,
+        a.studentAnswer
+      ]
+    );
+  });
+
+  db.run(
+    `UPDATE assessments
+     SET score=?, finishedAt=?
+     WHERE id=?`,
+    [score, new Date().toISOString(), assessmentId]
+  );
+
+  res.json({ score, total: answers.length });
 });
 
 const PORT = process.env.PORT || 3000;
